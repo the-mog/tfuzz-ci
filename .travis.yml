@@ -17,6 +17,7 @@ jobs:
       go: 1.12.x
       script:
         - cargo install cargo-fuzz
+        - chmod +x ./ci/fuzzit.sh
         - ./ci/fuzzit.sh regression
 
     - stage: Fuzzit (Fuzzing)
