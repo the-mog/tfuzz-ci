@@ -7,7 +7,7 @@ wget -q -O fuzzit https://github.com/fuzzitdev/fuzzit/releases/download/v2.4.29/
 chmod a+x fuzzit
 
 if [ $1 == "fuzzing" ]; then
-    ./fuzzit create job mmr_push_bytes ./fuzz/target/x86_64-unknown-linux-gnu/debug/mmr_push_bytes
+    ./fuzzit create job mmr_push_bytes ./targets/mmr_push_bytes
 else
-    ./fuzzit create job --type local-regression mmr_push_bytes ./fuzz/target/x86_64-unknown-linux-gnu/debug/mmr_push_bytes
+    ./fuzzit create job --type local-regression mmr_push_bytes ./targets/mmr_push_bytes
 fi

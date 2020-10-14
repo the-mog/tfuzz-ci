@@ -16,16 +16,8 @@ jobs:
     - stage: Build, Unit-Tests & Fuzz-Tests
       go: 1.12.x
       script:
-        - mkdir fuzztari
-        - cd fuzztari
-        - git clone https://github.com/tari-project/tari
-        - git clone https://github.com/tari-project/tari_utilities
-        - git clone https://github.com/tari-project/tari-crypto
-        - git clone https://github.com/the-mog/tari-fuzzer
-        - cd tari-fuzzer
         - cargo install cargo-fuzz
-        - cargo run
-          #- ./ci/fuzzit.sh regression
+        - ./ci/fuzzit.sh regression
 
     - stage: Fuzzit (Fuzzing)
       if: branch = master AND type IN (push)
