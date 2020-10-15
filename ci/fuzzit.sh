@@ -9,5 +9,5 @@ chmod a+x fuzzit
 if [ $1 == "fuzzing" ]; then
     ./fuzzit create job mmr_push_bytes ./targets/mmr_push_bytes
 else
-    ./fuzzit create job --type local-regression mmr_push_bytes ./targets/mmr_push_bytes
+    ./fuzzit create job --type local-regression mmr_push_bytes ./targets/mmr_push_bytes --additional-corpus ./corpus-mmr_push_bytes.tar.gz
 fi
