@@ -14,7 +14,7 @@ jobs:
       script:
         - cargo install cargo-fuzz
         - chmod +x ./ci/fuzzit.sh
-        - ./ci/fuzzit.sh regression
+        - ./ci/fuzzit.sh 
 
     - stage: Fuzzit (Fuzzing)
       if: branch = master AND type IN (push)
