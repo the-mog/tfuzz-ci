@@ -13,6 +13,18 @@ jobs:
       go: 1.12.x
       script:
         - cargo install cargo-fuzz
+        - sudo apt-get update && \
+          openssl \
+          libssl-dev \
+          pkg-config \
+          libsqlite3-dev \
+          git \
+          cmake \
+          zip \
+          libc++-dev \
+          libc++abi-dev \
+          libprotobuf-dev \
+          protobuf-compiler
         - chmod +x ./ci/fuzzit.sh
         - ./ci/fuzzit.sh 
 
