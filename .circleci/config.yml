@@ -4,8 +4,8 @@ defaults:
   rust_image: &rust_image quay.io/tarilabs/rust_tari-build-with-deps:nightly-2020-06-10
 
 commands:
-  test:
-    description: Run the tests
+  regression:
+    description: Run fuzz regression tests
     parameters:
       release:
         description: Set this to true to compile in release mode.
@@ -34,7 +34,7 @@ jobs:
       - image: *rust_image
     resource_class: medium
     steps:
-      - test:
+      - regression:
           release: true
 
 workflows:
