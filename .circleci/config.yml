@@ -1,0 +1,171 @@
+version: 2.1
+
+defaults:
+  rust_image: &rust_image quay.io/tarilabs/rust_tari-build-with-deps:nightly-2020-06-10
+
+commands:
+  test:
+    description: Run the tests
+    parameters:
+      release:
+        description: Set this to true to compile in release mode.
+        type: boolean
+        default: false
+    steps:
+      - run:
+          name: Checkout code
+          command: |
+              git clone https://github.com/tari-project/tari
+              cd tari
+      - run:
+          name: Calculate dependencies
+          command: |
+            rustc --version >rust-version
+            test -e Cargo.lock || cargo generate-lockfile
+      - restore_cache:
+          keys:
+            - v6-cargo-cache-{{arch}}-{{checksum "rust-version"}}-<<parameters.release>>-{{checksum "Cargo.lock"}}
+      - run:
+          name: Build the project
+          command: cargo build --all --all-features --jobs=3 <<#parameters.release>>--release<</parameters.release>>
+      - run:
+          name: Cargo fmt
+          command: |
+            TOOLCHAIN=$(cat rust-toolchain)
+            rustup component add --toolchain $TOOLCHAIN rustfmt
+            cargo fmt --all -- --check
+      - run:
+          name: Run tests
+          command: cargo test --workspace --all-features --jobs=3 <<#parameters.release>>--release<</parameters.release>>
+      - save_cache:
+          paths:
+            - /usr/local/cargo/registry
+            - target
+          key: v6-cargo-cache-{{arch}}-{{checksum "rust-version"}}-<<parameters.release>>-{{checksum "Cargo.lock"}}
+  clippy:
+    description: cargo clippy
+    steps:
+      - run:
+          name: Calculate dependencies
+          command: |
+            rustc --version >rust-version
+            test -e Cargo.lock || cargo generate-lockfile
+      - restore_cache:
+          keys:
+            - v6-cargo-cache-{{arch}}-{{checksum "rust-version"}}-{{checksum "Cargo.lock"}}
+      - run:
+          name: Cargo fmt
+          command: |
+            TOOLCHAIN=$(cat rust-toolchain)
+            rustup component add --toolchain $TOOLCHAIN rustfmt
+            cargo fmt --all -- --check
+      - run:
+          name: Run clippy
+          command: cargo clippy -- -D warnings
+      - save_cache:
+          paths:
+            - /usr/local/cargo/registry
+            - target
+          key: v6-cargo-cache-{{arch}}-{{checksum "rust-version"}}-{{checksum "Cargo.lock"}}
+
+
+jobs:
+  test-docs:
+    docker:
+      - image: *rust_image
+    steps:
+      - checkout
+      - run:
+          name: RFC documentation
+          command: |
+            # Workaround for bug https://github.com/rust-lang-nursery/mdBook/issues/855
+            (test -x /usr/local/cargo/bin/mdbook || cargo install --git "https://github.com/integer32llc/mdBook" --rev "d7c7d910057d22180a8eaffee9e17fa983652b64" mdbook)
+            cd RFC && mdbook test && mdbook build
+
+      - persist_to_workspace:
+          root: .
+          paths: book
+
+  test-tari-release:
+    docker:
+      - image: *rust_image
+    resource_class: medium
+    steps:
+      - checkout
+      - test:
+          release: true
+
+  clippy:
+    docker:
+      - image: *rust_image
+    resource_class: medium
+    steps:
+      - checkout
+      - clippy
+
+  deploy-docs:
+    docker:
+      - image: quay.io/tarilabs/git-ssh-client:0.2-alpine
+    steps:
+      - checkout
+      - attach_workspace:
+          at: .
+      - add_ssh_keys:
+          fingerprints:
+            - "a6:a6:e2:be:a3:94:3e:4c:9d:51:25:f6:98:f9:0c:a4"
+      - run:
+          name: Deploy docs to gh-pages branch
+          command: |
+            DEST_BRANCH=gh-pages
+            DEST_PATH=book/
+
+            if [[ ! -d $DEST_PATH ]]; then
+              echo "$DEST_PATH directory not found!"
+              exit 1
+            fi
+
+            TMP_DIR=$(mktemp -d /tmp/ghpages_XXXXXX)
+
+            echo "Copying book files to temporary location $TMP_DIR"
+            cp -R $DEST_PATH/* $DEST_PATH/.nojekyll $TMP_DIR
+
+            REMOTE=$(git remote get-url origin)
+
+            cd $TMP_DIR
+
+            git config --global user.email "ci-build@tari.com"
+            git config --global user.name "ci-build"
+
+            git init
+            git checkout -b $DEST_BRANCH
+            git remote add origin $REMOTE
+            git add --all .
+            git commit -m "[skip ci] Update RFC docs"
+            git push origin $DEST_BRANCH --force
+
+            echo "Published."
+
+
+
+workflows:
+  version: 2
+  workflow:
+    jobs:
+      - test-docs:
+          filters:
+            branches:
+              ignore: gh-pages
+      - deploy-docs:
+          requires:
+            - test-docs
+          filters:
+            branches:
+              only: development
+      - test-tari-release:
+          filters:
+            branches:
+              ignore: gh-pages
+      - clippy:
+          filters:
+            branches:
+              ignore: gh-pages
