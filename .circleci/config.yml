@@ -15,7 +15,6 @@ commands:
       - run:
           name: Install cargo-fuzz
           command: cargo install cargo-fuzz
-    steps:
       - run:
           name: Checkout and Build code
           command: |
