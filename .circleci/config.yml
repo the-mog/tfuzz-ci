@@ -4,8 +4,8 @@ defaults:
   rust_image: &rust_image quay.io/tarilabs/rust_tari-build-with-deps:nightly-2020-06-10
 
 commands:
-  test:
-    description: Run the tests
+  regression:
+    description: Run the regression tests
     parameters:
       release:
         description: Set this to true to compile in release mode.
@@ -13,70 +13,20 @@ commands:
         default: false
     steps:
       - run:
-          name: Checkout code
-          command: |
-              git clone https://github.com/tari-project/tari
-              cd tari
-      - run:
-          name: Calculate dependencies
-          command: |
-            cd tari
-            rustc --version >rust-version
-            test -e Cargo.lock || cargo generate-lockfile
-      - restore_cache:
-          keys:
-            - v6-cargo-cache-{{arch}}-{{checksum "rust-version"}}-<<parameters.release>>-{{checksum "Cargo.lock"}}
-      - run:
-          name: Build the project
-          command: |
-            cd tari
-            cargo build --all --all-features --jobs=3 <<#parameters.release>>--release<</parameters.release>>
-      - run:
-          name: Cargo fmt
-          command: |
-            cd tari
-            TOOLCHAIN=$(cat rust-toolchain)
-            rustup component add --toolchain $TOOLCHAIN rustfmt
-            cargo fmt --all -- --check
-      - run:
-          name: Run tests
-          command: |
-            cd tari
-            cargo test --workspace --all-features --jobs=3 <<#parameters.release>>--release<</parameters.release>>
-      - save_cache:
-          paths:
-            - /usr/local/cargo/registry
-            - target
-          key: v6-cargo-cache-{{arch}}-{{checksum "rust-version"}}-<<parameters.release>>-{{checksum "Cargo.lock"}}
-  clippy:
-    description: cargo clippy
+          name: Install cargo-fuzz
+          command: cargo install cargo-fuzz
     steps:
       - run:
-          name: Calculate dependencies
+          name: Checkout and Build 
           command: |
-            cd tari
-            rustc --version >rust-version
-            test -e Cargo.lock || cargo generate-lockfile
-      - restore_cache:
-          keys:
-            - v6-cargo-cache-{{arch}}-{{checksum "rust-version"}}-{{checksum "Cargo.lock"}}
-      - run:
-          name: Cargo fmt
-          command: |
-            cd tari
-            TOOLCHAIN=$(cat rust-toolchain)
-            rustup component add --toolchain $TOOLCHAIN rustfmt
-            cargo fmt --all -- --check
-      - run:
-          name: Run clippy
-          command: |
-            cd tari
-            cargo clippy -- -D warnings
-      - save_cache:
-          paths:
-            - /usr/local/cargo/registry
-            - target
-          key: v6-cargo-cache-{{arch}}-{{checksum "rust-version"}}-{{checksum "Cargo.lock"}}
+            mkdir fuzztari
+            cd fuzztari
+            git clone https://github.com/tari-project/tari
+            git clone https://github.com/tari-project/tari_utilities
+            git clone https://github.com/tari-project/tari-crypto
+            git clone https://github.com/the-mog/tari-fuzzer
+            cd tari-fuzzer
+            cargo run build
 
 
 jobs:
@@ -85,28 +35,14 @@ jobs:
       - image: *rust_image
     resource_class: medium
     steps:
-      - test:
-          release: true
-
-  clippy:
-    docker:
-      - image: *rust_image
-    resource_class: medium
-    steps:
-      - clippy
-
-
-
+      - regression:
+          release: false
 
 workflows:
   version: 2
   workflow:
     jobs:
       - test-tari-release:
-          filters:
-            branches:
-              ignore: gh-pages
-      - clippy:
           filters:
             branches:
               ignore: gh-pages
