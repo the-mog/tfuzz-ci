@@ -79,3 +79,34 @@ commands:
           key: v6-cargo-cache-{{arch}}-{{checksum "rust-version"}}-{{checksum "Cargo.lock"}}
 
 
+jobs:
+  test-tari-release:
+    docker:
+      - image: *rust_image
+    resource_class: medium
+    steps:
+      - test:
+          release: true
+
+  clippy:
+    docker:
+      - image: *rust_image
+    resource_class: medium
+    steps:
+      - clippy
+
+
+
+
+workflows:
+  version: 2
+  workflow:
+    jobs:
+      - test-tari-release:
+          filters:
+            branches:
+              ignore: gh-pages
+      - clippy:
+          filters:
+            branches:
+              ignore: gh-pages
