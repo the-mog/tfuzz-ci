@@ -4,8 +4,8 @@ defaults:
   rust_image: &rust_image quay.io/tarilabs/rust_tari-build-with-deps:nightly-2020-06-10
 
 commands:
-  regression:
-    description: Run the regression tests
+  test:
+    description: Run the tests
     parameters:
       release:
         description: Set this to true to compile in release mode.
@@ -17,7 +17,7 @@ commands:
           command: cargo install cargo-fuzz
     steps:
       - run:
-          name: Checkout and Build 
+          name: Checkout and Build code
           command: |
             mkdir fuzztari
             cd fuzztari
@@ -35,8 +35,8 @@ jobs:
       - image: *rust_image
     resource_class: medium
     steps:
-      - regression:
-          release: false
+      - test:
+          release: true
 
 workflows:
   version: 2
